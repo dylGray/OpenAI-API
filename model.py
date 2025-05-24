@@ -12,7 +12,6 @@ if not api_key:
 
 client = OpenAI(api_key=api_key)
 
-
 def build_system_prompt():
     '''
     Builds an efficient, structured system prompt from YAML files.
@@ -36,7 +35,7 @@ def build_system_prompt():
         print(f"Warning: Could not load grading.yaml: {e}")
         grading = {}
 
-    # Build prompt
+    # building system prompt
     lines = []
 
     lines.append("You are an AI trained to strictly evaluate elevator pitches using the Priority Pitch methodology.\n")
@@ -63,7 +62,6 @@ def build_system_prompt():
 
     return "\n".join(lines)
 
-
 def get_completion_from_messages(messages, model="gpt-4", temperature=0.4, max_tokens=500):
     '''Sends a prompt and message history to OpenAI's GPT model to get a generated completion.'''
 
@@ -78,7 +76,6 @@ def get_completion_from_messages(messages, model="gpt-4", temperature=0.4, max_t
     except Exception as e:
         print(f"Error fetching completion: {e}")
         return None
-
 
 def is_valid_pitch(user_input):
     '''Classifies user input as either a pitch or non-pitch.'''
@@ -111,3 +108,33 @@ def is_valid_pitch(user_input):
     except Exception as e:
         print("Error during input classification:", e)
         return {"is_pitch": True, "reason": "Fallback"}
+
+def restore_punctuation(raw_text):
+    '''Return the text with proper punctuation using OpenAI'''
+
+    if not raw_text:
+        return raw_text
+
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a helpful assistant that adds correct punctuation to "
+                "transcribed speech. Return the same text with punctuation only "
+                "and do not change any words."
+            ),
+        },
+        {"role": "user", "content": raw_text},
+    ]
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo-0125",
+            messages=messages,
+            temperature=0,
+            max_tokens=len(raw_text.split()) + 10,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        print("Error restoring punctuation:", e)
+        return raw_text

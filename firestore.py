@@ -3,8 +3,6 @@ import re
 import json
 import firebase_admin
 from firebase_admin import credentials, firestore
-from datetime import datetime
-from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 if not firebase_admin._apps:
     firebase_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
@@ -66,7 +64,6 @@ def save_submission(email, pitch_text, feedback):
         "email": email,
         "pitch": pitch_text.strip(),
         "feedback": structured_feedback,
-        "submitted_at": firestore.SERVER_TIMESTAMP
     }
 
     # store in Firestore in a collection named after the domain

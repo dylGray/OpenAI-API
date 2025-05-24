@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify, render_template, redirect, url_for, session, Response
-from model import build_system_prompt, get_completion_from_messages, is_valid_pitch
+from model import build_system_prompt, get_completion_from_messages, is_valid_pitch, restore_punctuation
 from firestore import save_submission, fetch_all_submissions
 from io import StringIO
 import os
@@ -64,6 +64,7 @@ def chat():
         return jsonify({"error": "No message provided"}), 400
 
     try:
+        user_message = restore_punctuation(user_message)
         warning_prefix = ""
         classification = is_valid_pitch(user_message)
 
@@ -107,12 +108,10 @@ def download_data():
     output.write('\ufeff')  # <- UTF-8 BOM for Excel
 
     writer = csv.writer(output)
-    writer.writerow(["Email", "Pitch", "Pain", "Threat", "Belief Statement", "Relief", "Tone", "Length", "Clarity", "Submitted At"])
+    writer.writerow(["Email", "Pitch", "Pain", "Threat", "Belief Statement", "Relief", "Tone", "Length", "Clarity"])
 
     for entry in all_submissions:
         fb = entry.get("feedback", {})
-        timestamp = entry.get("submitted_at")
-        ts_str = timestamp.isoformat() if timestamp else ""
 
         writer.writerow([
             entry.get("email", ""),
@@ -123,13 +122,22 @@ def download_data():
             fb.get("Relief", ""),
             fb.get("Tone", ""),
             fb.get("Length", ""),
-            fb.get("Clarity", ""),
-            ts_str
+            fb.get("Clarity", "")
         ])
 
     output.seek(0)
     return Response(output, mimetype="text/csv",
                     headers={"Content-Disposition": "attachment;filename=priority_pitch_data.csv"})
+
+@app.route("/punctuate", methods=["POST"])
+def punctuate():
+    '''Updating punctuation of user submitted pitch on front-end'''
+    text = request.json.get("text", "")
+    if not text:
+        return jsonify({"error": "No text provided"}), 400
+    
+    punctuated = restore_punctuation(text)
+    return jsonify({"punctuated": punctuated})
 
 if __name__ == "__main__":
     app.run(debug=True)
